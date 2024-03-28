@@ -1,0 +1,115 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout title="Welcome to Astro.">
+  <main>
+    <canvas id="myCanvas" width="800" height="800"></canvas>
+  </main>
+</Layout>
+
+<script>
+  import { getCanvasById, Vector, motions } from "../utils.js";
+  const { ctx, canvas } = getCanvasById("myCanvas");
+
+  let mousePosition = Vector.ZERO;
+
+  // Event listener for mouse movement
+  canvas.addEventListener("mousemove", function (event) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    mousePosition = new Vector((event.clientX - rect.left) * scaleX, (event.clientY - rect.top) * scaleY);
+  });
+
+  let t0 = new Date().getTime();
+
+  const CENTER = new Vector(canvas.width / 2, canvas.height / 2);
+  const VELOCITY = new Vector(0.01, 0);
+  const X0 = CENTER.x;
+  const Y0 = CENTER.y;
+
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function drawAxes() {
+    // Draw X-axis
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height / 2);
+    ctx.lineTo(canvas.width, canvas.height / 2);
+    ctx.strokeStyle = "black";
+    ctx.stroke();
+
+    // Draw Y-axis
+    ctx.beginPath();
+    ctx.moveTo(canvas.width / 2, 0);
+    ctx.lineTo(canvas.width / 2, canvas.height);
+    ctx.strokeStyle = "black";
+    ctx.stroke();
+  }
+
+  function drawCircle(position: Vector) {
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.arc(position.x, position.y, 10, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  class Buffer {
+    private limit = 100;
+    public vectors: Array<Vector> = [];
+
+    public addVector(v: Vector) {
+      if (this.vectors.length > this.limit) {
+        this.vectors.shift();
+      }
+      this.vectors.push(v);
+    }
+  }
+
+  const vectorBuffer1 = new Buffer();
+  const vectorBuffer2 = new Buffer();
+
+  function drawTrajectory(buffer: Buffer) {
+    if (buffer.vectors.length <= 1) return;
+    for (let i = 0; i < buffer.vectors.length - 1; i++) {
+      ctx.beginPath();
+      const startVector = buffer.vectors[i];
+      const endVector = buffer.vectors[i + 1];
+      ctx.globalAlpha = (1 - (buffer.vectors.length - i) / buffer.vectors.length) ** 2;
+      ctx.moveTo(startVector.x, startVector.y);
+      ctx.lineTo(endVector.x, endVector.y);
+      ctx.strokeStyle = "black";
+      ctx.stroke();
+    }
+  }
+
+  function redraw(time: number) {
+    clearCanvas();
+    drawAxes();
+    const linearMotionPos = motions.linearMotion(time, CENTER, VELOCITY);
+    // drawCircle(linearMotionPos);
+
+    const circularMotionPos = motions.circularMotion(time, CENTER, 100, 1, 0);
+    vectorBuffer1.addVector(circularMotionPos);
+    drawCircle(circularMotionPos);
+
+    const circulatMotionPos2 = motions.circularMotion(time, circularMotionPos, 100, -2, 180);
+    vectorBuffer2.addVector(circulatMotionPos2);
+    drawCircle(circulatMotionPos2);
+
+    drawTrajectory(vectorBuffer1);
+    drawTrajectory(vectorBuffer2);
+  }
+
+  animate();
+
+  function animate() {
+    requestAnimationFrame(animate);
+
+    redraw(new Date().getTime() - t0);
+  }
+</script>
