@@ -12,6 +12,12 @@ export class Vector {
     return this;
   }
 
+  public mult(n: number) {
+    this.x *= n;
+    this.y *= n;
+    return this;
+  }
+
   static get ZERO() {
     return new Vector(0, 0);
   }
