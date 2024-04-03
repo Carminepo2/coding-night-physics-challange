@@ -1,32 +1,40 @@
 import { Entity } from "../models/entity";
+import { Processor } from "./processor";
 import { Renderer } from "./renderer";
 
 export interface PhysicsState2D {
   entities: Entity[];
   gravity: number;
+  dragCoefficient: number;
+  bounds?: { x: number; y: number };
   time?: number;
 }
 
 export class PhysicsSimulation2D {
   private state: PhysicsState2D;
-  private renderer = new Renderer();
+  private renderer: Renderer;
+  private processor: Processor;
 
-  constructor(entities: Array<Entity>, gravity: number) {
-    this.state = { entities, gravity };
+  constructor(initialState: { entities: Array<Entity>; gravity: number; dragCoefficient: number }) {
+    this.renderer = new Renderer();
+    this.state = {
+      ...initialState,
+      bounds: { x: this.renderer.canvasSize.width - 40, y: this.renderer.canvasSize.height - 40 },
+    };
+    this.processor = new Processor(this.state);
   }
 
   public start() {
-    const processor = new Worker(new URL("./processor.ts", import.meta.url), {
-      type: "module",
+    const { processor, renderer } = this;
+
+    processor.subscribe((state) => {
+      this.state = state;
     });
 
-    processor.postMessage(this.state);
-    processor.onmessage = (event: MessageEvent<PhysicsState2D>) => {
-      this.state = event.data;
-    };
+    processor.start();
 
     const drawState = () => {
-      this.renderer.draw(this.state);
+      renderer.draw(this.state);
       requestAnimationFrame(drawState);
     };
 

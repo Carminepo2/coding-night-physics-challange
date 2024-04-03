@@ -7,7 +7,7 @@ export class Entity {
   constructor(public position: Vector, public velocity: Vector, public mass: number) {}
 
   public draw(_canvas: Canvas) {
-    throw new Error("bla bla bla");
+    console.warn("draw method not implemented");
   }
 }
 

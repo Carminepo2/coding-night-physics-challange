@@ -13,4 +13,11 @@ export class Renderer {
       point.draw(this.canvas);
     });
   }
+
+  get canvasSize() {
+    return {
+      width: this.canvas.width,
+      height: this.canvas.height,
+    };
+  }
 }
