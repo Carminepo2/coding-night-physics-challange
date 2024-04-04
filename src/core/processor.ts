@@ -11,11 +11,9 @@ export class Processor {
   subscribe(callback: (state: PhysicsState2D) => void) {
     const pid = crypto.randomUUID();
     this.subscribers.push({ pid, callback });
-    return this.unsubscribe.bind(this, pid);
-  }
-
-  private unsubscribe(pid: string) {
-    this.subscribers = this.subscribers.filter((subscriber) => subscriber.pid !== pid);
+    return () => {
+      this.subscribers = this.subscribers.filter((subscriber) => subscriber.pid !== pid);
+    };
   }
 
   start() {
@@ -23,31 +21,29 @@ export class Processor {
   }
 
   private loop() {
-    const { state } = this;
     const currentTime = now();
 
-    if (!state) return;
-    if (!state.time) {
-      state.time = currentTime;
+    if (!this.state.time) {
+      this.state.time = currentTime;
       return;
     }
 
-    const dTime = currentTime - state.time;
+    const dTime = currentTime - this.state.time;
 
-    this.state.entities = state.entities.map((entity) => {
+    this.state.entities = this.state.entities.map((entity) => {
       entity.position = entity.position.sum(entity.velocity.mult(dTime));
-      const forceGrav = new Vector(0, state.gravity).mult(entity.mass);
+      const forceGrav = new Vector(0, this.state.gravity).mult(entity.mass);
       entity.velocity = entity.velocity.sum(forceGrav.mult(dTime / entity.mass));
 
-      this.handleDragForces(entity, state, dTime);
-      this.handleEntityBounds(entity, state);
+      this.handleDragForces(entity, this.state, dTime);
+      this.handleEntityBounds(entity, this.state);
 
       return entity;
     });
 
-    state.time = currentTime;
+    this.state.time = currentTime;
 
-    this.subscribers.forEach((subscriber) => subscriber.callback(state));
+    this.subscribers.forEach((subscriber) => subscriber.callback(this.state));
   }
 
   private handleDragForces(entity: Entity, state: PhysicsState2D, dTime: number) {
@@ -61,14 +57,24 @@ export class Processor {
   }
 
   private handleEntityBounds(entity: Entity, state: PhysicsState2D) {
-    if (state.bounds) {
-      if (entity.position.x < 0 || entity.position.x > state.bounds.x) {
-        entity.velocity = new Vector(-entity.velocity.x, entity.velocity.y);
+    if (!state.bounds) return;
+
+    if (entity.position.x < 0 || entity.position.x > state.bounds.x) {
+      entity.velocity = new Vector(-entity.velocity.x, entity.velocity.y);
+      if (entity.position.x < 0) {
+        entity.position = new Vector(0, entity.position.y);
+      }
+      if (entity.position.x > state.bounds.x) {
         entity.position = new Vector(state.bounds.x, entity.position.y);
       }
+    }
 
-      if (entity.position.y < 0 || entity.position.y > state.bounds.y) {
-        entity.velocity = new Vector(entity.velocity.x, -entity.velocity.y * 0.9);
+    if (entity.position.y < 0 || entity.position.y > state.bounds.y) {
+      entity.velocity = new Vector(entity.velocity.x, -entity.velocity.y * 0.9);
+      if (entity.position.y < 0) {
+        entity.position = new Vector(entity.position.x, 0);
+      }
+      if (entity.position.y > state.bounds.y) {
         entity.position = new Vector(entity.position.x, state.bounds.y);
       }
     }

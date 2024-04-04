@@ -1,34 +1,37 @@
 import { Entity } from "../models/entity";
+import { Vector } from "../models/vector";
 import { Processor } from "./processor";
 import { Renderer } from "./renderer";
 
-export interface PhysicsState2D {
+export type PhysicsState2D = {
   entities: Entity[];
   gravity: number;
   dragCoefficient: number;
   bounds?: { x: number; y: number };
   time?: number;
-}
+};
+
+type PhysicsSimulation2DOptions = {
+  canvasOptions: { showAxis?: boolean } & ({ width: number; height: number } | { fullscreen: true });
+};
 
 export class PhysicsSimulation2D {
   private state: PhysicsState2D;
-  private renderer: Renderer;
-  private processor: Processor;
 
-  constructor(initialState: { entities: Array<Entity>; gravity: number; dragCoefficient: number }) {
-    this.renderer = new Renderer();
+  constructor(private options: PhysicsSimulation2DOptions) {
     this.state = {
-      ...initialState,
-      bounds: { x: this.renderer.canvasSize.width - 40, y: this.renderer.canvasSize.height - 40 },
+      entities: [],
+      gravity: 0,
+      dragCoefficient: 0,
     };
-    this.processor = new Processor(this.state);
   }
 
   public start() {
-    const { processor, renderer } = this;
+    const renderer = new Renderer(this.options.canvasOptions);
+    const processor = new Processor(this.state);
 
-    processor.subscribe((state) => {
-      this.state = state;
+    processor.subscribe((newState) => {
+      this.state = newState;
     });
 
     processor.start();
@@ -41,5 +44,21 @@ export class PhysicsSimulation2D {
     requestAnimationFrame(() => {
       drawState();
     });
+  }
+
+  public addEntity(...entities: Entity[]) {
+    this.state.entities.push(...entities);
+  }
+
+  set gravity(gravity: number) {
+    this.state.gravity = gravity;
+  }
+
+  set dragCoefficient(dragCoefficient: number) {
+    this.state.dragCoefficient = dragCoefficient;
+  }
+
+  set bounds(bounds: Vector) {
+    this.state.bounds = bounds;
   }
 }

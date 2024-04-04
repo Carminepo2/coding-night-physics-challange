@@ -1,23 +1,33 @@
-import { FullscreenCanvas } from "../models/canvas";
-import { Point } from "../models/entity";
+import { Canvas, FullscreenCanvas } from "../models/canvas";
 import { PhysicsState2D } from "./physics-simulation-2d";
 
+type RendererOptions = { showAxis?: boolean } & ({ width: number; height: number } | { fullscreen: true });
+
 export class Renderer {
-  private canvas = new FullscreenCanvas();
+  private _canvas: Canvas;
+
+  constructor(private canvasOptions: RendererOptions) {
+    if ("fullscreen" in canvasOptions) {
+      this._canvas = new FullscreenCanvas();
+    } else {
+      this._canvas = new Canvas(canvasOptions.width, canvasOptions.height);
+    }
+  }
 
   public draw(state: PhysicsState2D) {
-    this.canvas.clearCanvas();
-    this.canvas.drawAxes();
+    this._canvas.clearCanvas();
+
+    if (this.canvasOptions.showAxis) this._canvas.drawAxes();
+
     state.entities.forEach((entity) => {
-      const point = new Point(entity.position, entity.velocity, entity.mass);
-      point.draw(this.canvas);
+      entity.draw(this._canvas);
     });
   }
 
-  get canvasSize() {
+  public get canvas() {
     return {
-      width: this.canvas.width,
-      height: this.canvas.height,
+      width: this._canvas.width,
+      height: this._canvas.height,
     };
   }
 }
